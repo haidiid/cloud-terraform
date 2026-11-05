@@ -1,0 +1,21 @@
+# ---
+# Copyright (C) 2026 Kasyfillah Haidi Bysr <haidi.id@hotmail.com>
+# Cirebon, GPLv3 License
+# ---
+
+# -- terraform files ---
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+.vm/
+*.tfvars
+
+#-- JetBrains files --
+.idea
+
+#-- Claude Code files --
+.claude
+
+#-- Local Credential Files
+credential

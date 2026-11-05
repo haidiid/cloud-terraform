@@ -1,0 +1,18 @@
+[Unit]
+Description=Apache ZooKeeper Distributed Coordinator Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+SyslogIdentifier=zookeeper
+ExecStart=/opt/zookeeper/bin/zkServer.sh start-foreground /opt/zookeeper/conf/zookeeper.properties
+ExecStop=/opt/zookeeper/bin/zkServer.sh stop /opt/zookeeper/conf/zookeeper.properties
+ExecReload=/opt/zookeeper/bin/zkServer.sh restart /opt/zookeeper/conf/zookeeper.properties
+Restart=on-failure
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

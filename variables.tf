@@ -84,3 +84,9 @@ variable "zookeeper_uri" {
   type        = string
   default     = "https://dlcdn.apache.org/zookeeper/zookeeper-3.8.8/apache-zookeeper-3.8.8-bin.tar.gz"
 }
+
+variable "zookeeper_eip_public_ip" {
+  description = "Public IPv4 of the pre-allocated Elastic IP (created outside Terraform) to associate with the ZooKeeper instance."
+  type        = string
+  default     = "15.134.165.145"
+}

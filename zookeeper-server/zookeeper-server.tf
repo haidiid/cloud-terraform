@@ -5,45 +5,45 @@
 
 # --- Password: read ZooKeeper user password from local credential file ---
 data "local_file" "zookeeper_user_password" {
-  filename = "${path.module}/credential/zookeeper-server/user/user-password.txt"
+  filename = "${path.module}/credential/user/user-password.txt"
 }
 
 # --- SSH Public Key: read SSH public key from local credential file ---
 data "local_file" "ssh-public-key" {
-  filename = "${path.module}/credential/ssh-public-key.pub"
+  filename = "${path.root}/credential/ssh-public-key.pub"
 }
 
 data "local_file" "zookeeper_configuration_sudoers" {
-  filename = "${path.module}/configuration/zookeeper-vm/sudoers.d/zookeeper"
+  filename = "${path.module}/configuration/sudoers.d/zookeeper"
 }
 
 data "local_file" "zookeeper_configuration_rsyslog" {
-  filename = "${path.module}/configuration/zookeeper-vm/rsyslog/zookeeper.conf"
+  filename = "${path.module}/configuration/rsyslog/zookeeper.conf"
 }
 
 data "local_file" "zookeeper_configuration_systemd" {
-  filename = "${path.module}/configuration/zookeeper-vm/systemd/zookeeperd.service"
+  filename = "${path.module}/configuration/systemd/zookeeperd.service"
 }
 
 data "local_file" "zookeeper_configuration_properties" {
-  filename = "${path.module}/configuration/zookeeper-vm/properties/zookeeper.properties"
+  filename = "${path.module}/configuration/properties/zookeeper.properties"
 }
 
 data "local_file" "zookeeper_configuration_log" {
-  filename = "${path.module}/configuration/zookeeper-vm/properties/logback.xml"
+  filename = "${path.module}/configuration/properties/logback.xml"
 }
 
 data "local_file" "zookeeper_configuration_myid" {
-  filename = "${path.module}/configuration/zookeeper-vm/properties/myid"
+  filename = "${path.module}/configuration/properties/myid"
 }
 
 # --- TLS: PKCS12 keystore/truststore are binary, so they are passed as base64 (content_base64) ---
 data "local_file" "zookeeper_tls_keystore" {
-  filename = "${path.module}/credential/zookeeper-server/tls/zookeeper-server.p12"
+  filename = "${path.module}/credential/tls/zookeeper-server.p12"
 }
 
 data "local_file" "zookeeper_tls_truststore" {
-  filename = "${path.module}/credential/zookeeper-server/tls/truststore.p12"
+  filename = "${path.module}/credential/tls/truststore.p12"
 }
 
 # --- AMI: Official AlmaLinux 10 (x86_64 / amd64) ---
@@ -73,15 +73,15 @@ data "aws_ami" "almalinux10" {
   }
 }
 
-# define public a vm instance for zookeeper-vm ---
+# define public a vm instance for zookeeper-server ---
 resource "aws_instance" "main" {
   ami                         = var.instance_ami_id != null ? var.instance_ami_id : data.aws_ami.almalinux10[0].id
   instance_type               = var.instance_type
-  subnet_id                   = aws_subnet.public[0].id
-  vpc_security_group_ids      = [aws_security_group.public.id]
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = var.security_group_ids
   associate_public_ip_address = true
   key_name                    = var.key_name
-  user_data = templatefile("zookeeper.tfl", {
+  user_data = templatefile("${path.module}/zookeeper-server.tfl", {
     zookeeper_username                 = var.zookeeper_username
     zookeeper_uri                      = var.zookeeper_uri
     zookeeper_password                 = trimspace(data.local_file.zookeeper_user_password.content)
@@ -110,4 +110,15 @@ resource "aws_instance" "main" {
   tags = {
     Name = "${var.name}-almalinux10"
   }
+}
+
+# look up the pre-allocated Elastic IP (managed outside Terraform) ---
+data "aws_eip" "zookeeper" {
+  public_ip = var.zookeeper_eip_public_ip
+}
+
+# attach the Elastic IP to zookeeper-server so its public address is stable ---
+resource "aws_eip_association" "zookeeper" {
+  allocation_id = data.aws_eip.zookeeper.id
+  instance_id   = aws_instance.main.id
 }

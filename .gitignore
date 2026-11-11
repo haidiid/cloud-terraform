@@ -20,10 +20,9 @@
 #-- local credential files --#
 credential/*
 
-# CA: every file in credential/ca/tls/ (key material is still caught by the TLS rules below)
-!credential/ca/
-credential/ca/*
-!credential/ca/tls/
+# CA: every file in ca/credential/tls/ (key material is still caught by the TLS rules below)
+ca/credential/*
+!ca/credential/tls/
 
 # ZooKeeper client: OpenSSL configuration files only
 !credential/zookeeper-client/
@@ -32,12 +31,11 @@ credential/zookeeper-client/*
 credential/zookeeper-client/tls/*
 !credential/zookeeper-client/tls/*.cnf
 
-# ZooKeeper server: OpenSSL configuration files only (credential/zookeeper-server/user/ stays ignored)
-!credential/zookeeper-server/
-credential/zookeeper-server/*
-!credential/zookeeper-server/tls/
-credential/zookeeper-server/tls/*
-!credential/zookeeper-server/tls/*.cnf
+# ZooKeeper server: OpenSSL configuration files only (zookeeper-server/credential/user/ stays ignored)
+zookeeper-server/credential/*
+!zookeeper-server/credential/tls/
+zookeeper-server/credential/tls/*
+!zookeeper-server/credential/tls/*.cnf
 
 #-- TLS Local Credential Files --#
 *.key

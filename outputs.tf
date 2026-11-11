@@ -43,20 +43,20 @@ output "nat_gateway_id" {
 
 output "instance_id" {
   description = "ID of the created AlmaLinux 10 EC2 instance."
-  value       = aws_instance.main.id
+  value       = module.zookeeper_server.instance_id
 }
 
 output "instance_public_ip" {
-  description = "Public IP address allocated to the AlmaLinux 10 EC2 instance."
-  value       = aws_instance.main.public_ip
+  description = "Elastic IP address associated with the AlmaLinux 10 EC2 instance."
+  value       = module.zookeeper_server.public_ip
 }
 
 output "instance_public_dns" {
   description = "Public DNS name assigned to the AlmaLinux 10 EC2 instance."
-  value       = aws_instance.main.public_dns
+  value       = module.zookeeper_server.public_dns
 }
 
 output "instance_ami_id" {
   description = "AMI ID used for launching the AlmaLinux 10 EC2 instance."
-  value       = aws_instance.main.ami
+  value       = module.zookeeper_server.ami_id
 }

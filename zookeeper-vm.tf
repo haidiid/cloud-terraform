@@ -5,7 +5,7 @@
 
 # --- Password: read ZooKeeper user password from local credential file ---
 data "local_file" "zookeeper_user_password" {
-  filename = "${path.module}/credential/user-password.txt"
+  filename = "${path.module}/credential/zookeeper-server/user/user-password.txt"
 }
 
 # --- SSH Public Key: read SSH public key from local credential file ---
@@ -35,6 +35,15 @@ data "local_file" "zookeeper_configuration_log" {
 
 data "local_file" "zookeeper_configuration_myid" {
   filename = "${path.module}/configuration/zookeeper-vm/properties/myid"
+}
+
+# --- TLS: PKCS12 keystore/truststore are binary, so they are passed as base64 (content_base64) ---
+data "local_file" "zookeeper_tls_keystore" {
+  filename = "${path.module}/credential/zookeeper-server/tls/zookeeper-server.p12"
+}
+
+data "local_file" "zookeeper_tls_truststore" {
+  filename = "${path.module}/credential/zookeeper-server/tls/truststore.p12"
 }
 
 # --- AMI: Official AlmaLinux 10 (x86_64 / amd64) ---
@@ -79,10 +88,12 @@ resource "aws_instance" "main" {
     ssh-public-key                     = trimspace(data.local_file.ssh-public-key.content)
     zookeeper_configuration_sudoers    = trimspace(data.local_file.zookeeper_configuration_sudoers.content)
     zookeeper_configuration_properties = trimspace(data.local_file.zookeeper_configuration_properties.content)
-    zookeeper_configuration_log = trimspace(data.local_file.zookeeper_configuration_log.content)
-    zookeeper_configuration_myid = trimspace(data.local_file.zookeeper_configuration_myid.content)
-    zookeeper_configuration_rsyslog = trimspace(data.local_file.zookeeper_configuration_rsyslog.content)
-    zookeeper_configuration_systemd = trimspace(data.local_file.zookeeper_configuration_systemd.content)
+    zookeeper_configuration_log        = trimspace(data.local_file.zookeeper_configuration_log.content)
+    zookeeper_configuration_myid       = trimspace(data.local_file.zookeeper_configuration_myid.content)
+    zookeeper_configuration_rsyslog    = trimspace(data.local_file.zookeeper_configuration_rsyslog.content)
+    zookeeper_configuration_systemd    = trimspace(data.local_file.zookeeper_configuration_systemd.content)
+    zookeeper_tls_keystore_base64      = data.local_file.zookeeper_tls_keystore.content_base64
+    zookeeper_tls_truststore_base64    = data.local_file.zookeeper_tls_truststore.content_base64
   })
 
   root_block_device {

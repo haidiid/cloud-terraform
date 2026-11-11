@@ -68,6 +68,27 @@ chmod -R 700 /var/opt/zookeeper
 chmod -R 700 /var/opt/zookeeper/log
 chmod -R 700 /var/opt/zookeeper/lib
 
+echo "installing zookeeper tls keystore and truststore"
+
+# paths must match ssl.keyStore.location / ssl.trustStore.location in zookeeper.properties
+mkdir -p /opt/zookeeper/conf/tls
+
+base64 -d > /opt/zookeeper/conf/tls/keystore.p12 << 'EOF'
+${zookeeper_tls_keystore_base64}
+EOF
+
+base64 -d > /opt/zookeeper/conf/tls/truststore.p12 << 'EOF'
+${zookeeper_tls_truststore_base64}
+EOF
+
+chown -R root:root /opt/zookeeper/conf/tls
+chmod 700 /opt/zookeeper/conf/tls
+# keystore holds the server private key: readable by root (the zookeeperd user) only
+chmod 400 /opt/zookeeper/conf/tls/keystore.p12
+chmod 400 /opt/zookeeper/conf/tls/truststore.p12
+
+echo "finished installing zookeeper tls keystore and truststore"
+
 cat << 'EOF' > /etc/rsyslog.d/zookeeper.conf
 ${zookeeper_configuration_rsyslog}
 EOF

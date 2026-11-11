@@ -17,5 +17,30 @@
 #-- Claude Code files --
 .claude
 
-#-- Local Credential Files
-credential
+#-- local credential files --#
+credential/*
+
+# CA: every file in credential/ca/tls/ (key material is still caught by the TLS rules below)
+!credential/ca/
+credential/ca/*
+!credential/ca/tls/
+
+# ZooKeeper client: OpenSSL configuration files only
+!credential/zookeeper-client/
+credential/zookeeper-client/*
+!credential/zookeeper-client/tls/
+credential/zookeeper-client/tls/*
+!credential/zookeeper-client/tls/*.cnf
+
+# ZooKeeper server: OpenSSL configuration files only (credential/zookeeper-server/user/ stays ignored)
+!credential/zookeeper-server/
+credential/zookeeper-server/*
+!credential/zookeeper-server/tls/
+credential/zookeeper-server/tls/*
+!credential/zookeeper-server/tls/*.cnf
+
+#-- TLS Local Credential Files --#
+*.key
+*.crt
+*.p12
+*.srl

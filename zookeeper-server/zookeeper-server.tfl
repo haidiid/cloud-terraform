@@ -83,7 +83,6 @@ EOF
 
 chown -R root:root /opt/zookeeper/conf/tls
 chmod 700 /opt/zookeeper/conf/tls
-# keystore holds the server private key: readable by root (the zookeeperd user) only
 chmod 400 /opt/zookeeper/conf/tls/keystore.p12
 chmod 400 /opt/zookeeper/conf/tls/truststore.p12
 
@@ -109,7 +108,4 @@ chown root:root /etc/systemd/system/zookeeperd.service
 systemctl enable zookeeperd
 systemctl start zookeeperd
 
-echo "installing zookeeper"
-
-
-
+echo "finished installing zookeeper"

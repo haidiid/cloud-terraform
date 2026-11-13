@@ -5,7 +5,7 @@
 
 # --- Password: read ZooKeeper user password from local credential file ---
 data "local_file" "zookeeper_user_password" {
-  filename = "${path.module}/credential/user/user-password.txt"
+  filename = "${path.module}/credential/user/zookeeper-password.pass"
 }
 
 # --- SSH Public Key: read SSH public key from local credential file ---

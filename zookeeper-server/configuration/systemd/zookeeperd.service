@@ -7,6 +7,9 @@ Type=simple
 User=root
 Group=root
 SyslogIdentifier=zookeeper
+# jute.maxbuffer is a JVM system property only: it is ignored when set in zookeeper.properties.
+# caps a znode's data / a request packet at 1048575 bytes (just below 1 MB)
+Environment="SERVER_JVMFLAGS=-Djute.maxbuffer=1048575"
 ExecStart=/opt/zookeeper/bin/zkServer.sh start-foreground /opt/zookeeper/conf/zookeeper.properties
 ExecStop=/opt/zookeeper/bin/zkServer.sh stop /opt/zookeeper/conf/zookeeper.properties
 ExecReload=/opt/zookeeper/bin/zkServer.sh restart /opt/zookeeper/conf/zookeeper.properties

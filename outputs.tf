@@ -60,3 +60,23 @@ output "instance_ami_id" {
   description = "AMI ID used for launching the AlmaLinux 10 EC2 instance."
   value       = module.zookeeper_server.ami_id
 }
+
+output "kerberos_instance_id" {
+  description = "ID of the Kerberos server EC2 instance."
+  value       = module.kerberos_server.instance_id
+}
+
+output "kerberos_instance_public_ip" {
+  description = "Elastic IP address associated with the Kerberos server EC2 instance."
+  value       = module.kerberos_server.public_ip
+}
+
+output "kerberos_instance_private_ip" {
+  description = "Private IP address of the Kerberos server EC2 instance."
+  value       = module.kerberos_server.private_ip
+}
+
+output "kerberos_instance_public_dns" {
+  description = "Public DNS name assigned to the Kerberos server EC2 instance."
+  value       = module.kerberos_server.public_dns
+}

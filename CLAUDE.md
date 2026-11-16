@@ -8,6 +8,10 @@ EC2 instance on AlmaLinux 10 secured with mutual TLSv1.3. See `README.md` for us
 - `*.tf` (root): providers, networking, variables, outputs.
 - `zookeeper-server/`: the ZooKeeper EC2 module, its first-boot user-data script (`zookeeper-server.tfl`),
   `configuration/` (files installed on the instance) and `credential/` (TLS and user material).
+- `kafka-broker/`: the Kafka broker EC2 module (Kafka 3.9 in ZooKeeper mode), its first-boot user-data script
+  (`kafka-broker.tfl`), `configuration/` and `credential/`. `server.properties` is a Terraform template.
+- `kerberos-server/`: the Kerberos server EC2 module, its first-boot user-data script (`kerberos-server.tfl`),
+  `configuration/` and `credential/user/`. Same public subnet, security group and user/SSH access as ZooKeeper.
 - `zookeeper-client/`: client-side `configuration/` and `credential/tls/` for connecting with `zkCli`.
 - `ca/`: the self-signed root CA.
 - `local.tfvars`: local variable values. Ignored by git; `local.tfvars.asc` is its encrypted copy.

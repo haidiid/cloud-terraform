@@ -1,0 +1,32 @@
+#!/bin/bash
+
+echo "provisioning a kerberos user"
+
+setenforce 0
+
+groupadd -g 1001 ${kerberos_username}
+useradd ${kerberos_username} -u 1001 -g 1001 -c "a Kerberos User"
+echo "${kerberos_password}" | passwd --stdin ${kerberos_username}
+
+mkdir /home/${kerberos_username}/.ssh
+echo "${ssh-public-key}" > /home/${kerberos_username}/.ssh/authorized_keys
+
+chmod 700 /home/${kerberos_username}/.ssh
+chmod 600 /home/${kerberos_username}/.ssh/authorized_keys
+
+chown -R 1001:1001 /home/${kerberos_username}/.ssh
+
+echo "finished provisioning a kerberos user"
+
+echo "elevating a kerberos user to have root command accesses"
+
+echo "${kerberos_configuration_sudoers}" > /etc/sudoers.d/kerberos
+
+chmod 440 /etc/sudoers.d/kerberos
+
+visudo -c -f /etc/sudoers.d/kerberos
+
+echo "finished elevating a kerberos user to have root command accesses"
+
+dnf update -y
+dnf install -y krb5-server krb5-workstation krb5-libs

@@ -90,3 +90,53 @@ variable "zookeeper_eip_public_ip" {
   type        = string
   default     = "15.134.165.145"
 }
+
+variable "kafka_username" {
+  description = "Username for the Kafka OS user created on the Kafka broker instance."
+  type        = string
+  default     = "haidiid"
+}
+
+variable "kafka_uri" {
+  description = "Kafka application binary tarball. Must be a 3.x release: Kafka 4 no longer supports ZooKeeper."
+  type        = string
+  default     = "https://archive.apache.org/dist/kafka/3.9.2/kafka_2.13-3.9.2.tgz"
+}
+
+variable "kafka_advertised_host" {
+  description = "Host name clients use to reach the Kafka broker. Must resolve to the broker's public IP and be listed in the broker certificate's subjectAltName."
+  type        = string
+  default     = "kafka-0.haidi.online"
+}
+
+variable "kerberos_username" {
+  description = "Username for the OS user created on the Kerberos instance."
+  type        = string
+  default     = "haidiid"
+}
+
+variable "kerberos_eip_public_ip" {
+  description = "Public IPv4 of the pre-allocated Elastic IP (created outside Terraform) to associate with the Kerberos instance."
+  type        = string
+  default     = "16.178.63.195"
+}
+
+variable "environment_tag" {
+  description = "environment name component in a ec2 instance name tag which the corresponding values comprising of local, pre-prod, and prod. Set in *.tfvars."
+  type        = string
+}
+
+variable "kerberos_name_tag" {
+  description = "Service component of the Kerberos instance Name tag (e.g. kerberos). Set in *.tfvars."
+  type        = string
+}
+
+variable "kerberos_version_tag" {
+  description = "Value of the Version tag on the Kerberos instance (e.g. 0.0.1). Set in *.tfvars."
+  type        = string
+}
+
+variable "kerberos_instance_type" {
+  description = "EC2 instance type of the Kerberos instance (e.g. t3.micro, 1 GiB RAM). Set in *.tfvars."
+  type        = string
+}

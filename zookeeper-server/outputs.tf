@@ -4,7 +4,7 @@
 # ---
 
 output "instance_id" {
-  value = aws_instance.main.id
+  value = aws_instance.zookeeper.id
 }
 
 output "public_ip" {
@@ -13,9 +13,9 @@ output "public_ip" {
 }
 
 output "public_dns" {
-  value = aws_instance.main.public_dns
+  value = aws_instance.zookeeper.public_dns
 }
 
 output "ami_id" {
-  value = aws_instance.main.ami
+  value = aws_instance.zookeeper.ami
 }

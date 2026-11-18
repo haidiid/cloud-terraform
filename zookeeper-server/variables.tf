@@ -3,8 +3,18 @@
 # Cirebon, GPLv3 License
 # ---
 
-variable "name" {
-  description = "Name prefix used in the Name tag of every resource."
+variable "environment_tag" {
+  description = "Public IPv4 of the pre-allocated Elastic IP to associate with the instance."
+  type        = string
+}
+
+variable "system_tag" {
+  description = "Public IPv4 of the pre-allocated Elastic IP to associate with the instance."
+  type        = string
+}
+
+variable "public_ip" {
+  description = "Public IPv4 of the pre-allocated Elastic IP to associate with the instance."
   type        = string
 }
 
@@ -18,26 +28,43 @@ variable "security_group_ids" {
   type        = list(string)
 }
 
-variable "instance_type" {
-  description = "EC2 instance type."
+# ---
+# Defines ZooKeeper instance variables, covering
+#    - instance's name tag
+#    - instance's version tag
+#    - image type
+#    - provision script instance's user
+#    - provision script Zookeeper Installer Source URI
+# ---
+variable "zookeeper_name_tag" {
+  description = "Service component of the ZooKeeper instance Name tag. Set in *.tfvars."
   type        = string
 }
 
-variable "instance_root_volume_size" {
-  description = "Size of the root EBS volume in GB."
-  type        = number
+variable "zookeeper_version_tag" {
+  description = "Value of the Version tag on the ZooKeeper instance. Set in *.tfvars."
+  type        = string
 }
 
-variable "instance_ami_id" {
-  description = "Optional AMI ID override. If null, the latest official AlmaLinux 10 x86_64 AMI is looked up."
+variable "zookeeper_instance_type" {
+  description = "EC2 instance type (t3.small provides 2 GiB RAM on x86_64/amd64 architecture)."
+  type        = string
+}
+
+variable "zookeeper_instance_ami_id" {
+  description = "Optional AMI ID for the ZooKeeper instance. When null, the latest matching AlmaLinux 10 AMI is selected."
   type        = string
   default     = null
 }
 
-variable "key_name" {
+variable "zookeeper_instance_volume_size" {
+  description = "EC2 instance type (t3.small provides 2 GiB RAM on x86_64/amd64 architecture)."
+  type        = string
+}
+
+variable "ssh_public_key" {
   description = "Optional key pair name to assign to the instance for SSH access."
   type        = string
-  default     = null
 }
 
 variable "zookeeper_username" {
@@ -46,11 +73,6 @@ variable "zookeeper_username" {
 }
 
 variable "zookeeper_uri" {
-  description = "ZooKeeper application binary tarball URL."
-  type        = string
-}
-
-variable "zookeeper_eip_public_ip" {
-  description = "Public IPv4 of the pre-allocated Elastic IP to associate with the instance."
+  description = "Zookeeper Application binary tarball on the instance"
   type        = string
 }

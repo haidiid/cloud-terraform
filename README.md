@@ -29,9 +29,13 @@ terraform apply -var-file=local.tfvars
 
 ## Managing the ZooKeeper EC2 Instance
 
-The ZooKeeper server is the `aws_instance.main` resource in `zookeeper-server/zookeeper-server.tf` (module `zookeeper_server`). It is
-provisioned once, on first boot, by the `zookeeper-server/zookeeper-server.tfl` user-data script. That script installs Java and
+The ZooKeeper server is the `aws_instance.main` resource in `zookeeper-server/main.tf` (module `zookeeper_server`). It is
+provisioned once, on first boot, by the `zookeeper-server/main.tfl` user-data script. That script installs Java and
 ZooKeeper, writes `zookeeper.properties`, and installs the TLS keystore and truststore.
+
+By default, Terraform selects the latest matching AlmaLinux 10 AMI. Set `zookeeper_instance_ami_id` to an AMI ID to use a
+specific image instead; setting it to `null` or omitting it keeps automatic selection. Changing the AMI can replace the EC2
+instance, so review the Terraform plan before applying an override.
 
 ### Destroy only the ZooKeeper EC2 instance
 
@@ -50,19 +54,19 @@ terraform destroy -target=module.zookeeper_server.aws_instance.main -var-file=lo
 
 ### Rebuild the ZooKeeper EC2 instance
 
-Replace the instance with a new one so that `zookeeper-server/zookeeper-server.tfl` runs again. Rebuild after changing anything
+Replace the instance with a new one so that `zookeeper-server/main.tfl` runs again. Rebuild after changing anything
 the instance installs at boot:
 
 - `zookeeper-server/configuration/**`: properties, systemd unit, rsyslog, sudoers, logback, `myid`
 - `zookeeper-server/credential/tls/zookeeper-server.p12` and `zookeeper-server/credential/tls/truststore.p12`
 - `zookeeper-server/credential/user/user-password.pass`, `credential/ssh-public-key.pub`
-- `zookeeper-server/zookeeper-server.tfl`, or the `zookeeper_uri` / `zookeeper_username` variables
+- `zookeeper-server/main.tfl`, or the `zookeeper_uri` / `zookeeper_username` variables
 
 > A plain `terraform apply` after such a change only **updates the instance in place**: AWS stops it,
 > swaps the user data, and starts it again. Cloud-init does not rerun the script on an existing
 > instance, so the new configuration and certificates are **never installed**. Always rebuild.
 
-1. Make sure the files read by `zookeeper-server/zookeeper-server.tf` exist:
+1. Make sure the files read by `zookeeper-server/main.tf` exist:
 
    | File | Content |
    |------|---------|
@@ -295,55 +299,21 @@ sudo tail -n 50 /var/opt/kafka/log/kafka.log
 
 Kafka is ready when `kafkad` is `active (running)` and the log shows `[KafkaServer id=0] started`.
 
-## Kerberos Server EC2 Instance
-
-The Kerberos server is the `aws_instance.main` resource in `kerberos-server/kerberos-server.tf` (module
-`kerberos_server`), tagged `Name = <environment_tag>-<kerberos_name_tag>-vm0` (`local-kerberos-vm0`) and
-`Version = <kerberos_version_tag>` (`0.0.1`). The three values are set in `local.tfvars`; `vm0` is hard-coded
-in the module. It sits in the same public subnet and security group
-as the ZooKeeper server and is reached on the pre-allocated Elastic IP `kerberos_eip_public_ip`
-(`16.178.63.195`), which must already exist in the account and region.
-
-The first-boot user-data script `kerberos-server/kerberos-server.tfl` replicates the ZooKeeper access setup
-(the OS user `kerberos_username` with its password, the shared SSH public key and passwordless `sudo`), then
-updates the system and installs `krb5-server`, `krb5-workstation` and `krb5-libs`. No realm or KDC is
-configured yet, and the public security group does not open the Kerberos ports (88, 464, 749).
-
-Files read by `kerberos-server/kerberos-server.tf`:
-
-| File | Content |
-|------|---------|
-| `kerberos-server/credential/user/kerberos-password.pass` | Kerberos OS user password |
-| `credential/ssh-public-key.pub` | SSH public key for the OS user (shared with ZooKeeper) |
-| `kerberos-server/configuration/sudoers.d/kerberos` | sudoers rule installed as `/etc/sudoers.d/kerberos` |
-
-```powershell
-ssh haidiid@16.178.63.195
-```
-
-Rebuild it with `terraform apply -replace=module.kerberos_server.aws_instance.main -var-file=local.tfvars`
-after changing the user-data script or the files it reads.
-
 ## Inputs
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `aws_region` | AWS region to deploy resources | `string` | `"ap-southeast-2"` |
 | `name` | Resource name prefix | `string` | `"main"` |
-| `instance_type` | EC2 instance type (2 GiB RAM, amd64) | `string` | `"t3.small"` |
-| `instance_root_volume_size` | Size of the root volume in GB | `number` | `15` |
-| `instance_ami_id` | Optional AMI ID override | `string` | `null` |
+| `zookeeper_instance_type` | EC2 instance type (2 GiB RAM, amd64) | `string` | `"t3.small"` |
+| `zookeeper_instance_volume_size` | Size of the root volume in GB | `number` | `15` |
+| `zookeeper_instance_ami_id` | Optional ZooKeeper AMI ID override; `null` selects the latest matching AlmaLinux 10 AMI | `string` | `null` |
 | `key_name` | Optional SSH Key Pair name | `string` | `null` |
 | `zookeeper_username` | Username for the ZooKeeper user | `string` | `"haidiid"` |
 | `kafka_username` | Username for the Kafka OS user | `string` | `"haidiid"` |
 | `kafka_uri` | Kafka binary tarball (3.x only) | `string` | Kafka 3.9.2 on `archive.apache.org` |
 | `kafka_advertised_host` | Host name clients use to reach the broker | `string` | `"kafka-0.haidi.online"` |
-| `kerberos_username` | Username for the Kerberos OS user | `string` | `"haidiid"` |
-| `kerberos_eip_public_ip` | Pre-allocated Elastic IP for the Kerberos instance | `string` | `"16.178.63.195"` |
-| `kerberos_instance_type` | EC2 instance type of the Kerberos instance (1 GiB RAM) | `string` | none, set in `local.tfvars` (`t3.micro`) |
 | `environment_tag` | Environment component of the Name tag | `string` | none, set in `local.tfvars` |
-| `kerberos_name_tag` | Service component of the Kerberos Name tag | `string` | none, set in `local.tfvars` |
-| `kerberos_version_tag` | Version tag of the Kerberos instance | `string` | none, set in `local.tfvars` |
 
 ## Outputs
 
@@ -357,7 +327,3 @@ after changing the user-data script or the files it reads.
 | `kafka_instance_public_ip` | Public IPv4 address of the Kafka broker instance |
 | `kafka_instance_private_ip` | Private IPv4 address of the Kafka broker instance |
 | `kafka_instance_public_dns` | Public DNS hostname of the Kafka broker instance |
-| `kerberos_instance_id` | ID of the Kerberos server EC2 instance |
-| `kerberos_instance_public_ip` | Elastic IP address of the Kerberos server instance |
-| `kerberos_instance_private_ip` | Private IPv4 address of the Kerberos server instance |
-| `kerberos_instance_public_dns` | Public DNS hostname of the Kerberos server instance |

@@ -2,39 +2,57 @@
 # Copyright (C) 2026 Kasyfillah Haidi Bysr <haidi.id@hotmail.com>
 # Cirebon, GPLv3 License
 # ---
+
+# fetches all AWS Available Zones for select region
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-locals {
-  azs = slice(data.aws_availability_zones.available.names, 0, var.az_count)
+# --- TLS: PKCS12 keystore/truststore are binary, so they are passed as base64 (content_base64) ---
+data "local_file" "ssh_public_key" {
+  filename = "${path.module}/credential/ssh-public-key.pub"
 }
 
-resource "aws_vpc" "main" {
-  cidr_block           = var.main_vpc_reserved_network_id_and_cidr
+# defines used availability zones
+locals {
+  azs            = slice(data.aws_availability_zones.available.names, 0, var.total_availability_zone)
+  ssh_public_key = data.local_file.ssh_public_key.content
+}
+
+# ---
+# Defines a VPC, covering
+#   - a vpc general spec
+#   - three subnets
+#   - two security groups
+# ---
+resource "aws_vpc" "local-vpc" {
+  cidr_block           = var.vpc_reserved_network_id
   enable_dns_hostnames = true
   enable_dns_support   = true
 
   tags = {
-    Name = var.name
+    Name = "local-${var.system_tag}"
   }
 }
 
 # Takes over the VPC's default security group and removes all its rules,
 # so nothing is reachable by accident. The VM will get its own security group.
 resource "aws_default_security_group" "default" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.local-vpc.id
 
   tags = {
-    Name = "${var.name}-default-deny"
+    Name = "local-${var.system_tag}-default-deny"
   }
 }
 
-resource "aws_security_group" "public" {
-  name        = "${var.name}-security-group-public-${var.aws_region}"
+# defines a public subnet to allow application endpoints accessible through internet gateway (cidr)
+#
+resource "aws_security_group" "public-security-group" {
+  name        = "local-${var.system_tag}-public-security-group-${var.aws_region}"
   description = "Security group for public subnet to receive incoming requests from internet gateway"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = aws_vpc.local-vpc.id
 
+  # defines receiving inbound traffic for SSH connection
   ingress {
     description = "Allow SSH inbound traffic from internet"
     from_port   = 22
@@ -43,6 +61,7 @@ resource "aws_security_group" "public" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # defines sending outbound traffic for SSH connection
   egress {
     description = "Allow SSH outbound traffic"
     from_port   = 22
@@ -51,6 +70,7 @@ resource "aws_security_group" "public" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # defines receiving incoming HTTP requests
   ingress {
     description = "Allow default http inbound traffic"
     from_port   = 80
@@ -84,21 +104,21 @@ resource "aws_security_group" "public" {
   }
 
   tags = {
-    Name = "${var.name}-security-group-public-${var.aws_region}"
+    Name = "local-${var.system_tag}-public-security-group-${var.aws_region}"
   }
 }
 
-resource "aws_security_group" "private" {
-  name        = "${var.name}-security-group-private-${var.aws_region}"
+resource "aws_security_group" "private-security-group" {
+  name        = "local-${var.system_tag}-private-security-group-${var.aws_region}"
   description = "Security group for private subnet allowing inbound traffic only from public subnet security group"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = aws_vpc.local-vpc.id
 
   ingress {
     description     = "Allow inbound traffic from public subnet security group"
     from_port       = 0
     to_port         = 0
     protocol        = "-1"
-    security_groups = [aws_security_group.public.id]
+    security_groups = [aws_security_group.public-security-group.id]
   }
 
   egress {
@@ -110,97 +130,98 @@ resource "aws_security_group" "private" {
   }
 
   tags = {
-    Name = "${var.name}-security-group-private-${var.aws_region}"
+    Name = "local-${var.system_tag}-private-security-group-${var.aws_region}"
   }
 }
 
 # --- internet access ---
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
+resource "aws_internet_gateway" "local-internet-gateway" {
+  vpc_id = aws_vpc.local-vpc.id
 
   tags = {
-    Name = "${var.name}-igw"
+    Name        = "local-${var.system_tag}-internet-gateway"
+    Description = "Internet Gateway"
   }
 }
 
 # --- public subnets: instances get a public IP and route through the internet gateway ---
-resource "aws_subnet" "public" {
-  count = var.az_count
+resource "aws_subnet" "local-public-subnet" {
+  count = var.total_availability_zone
 
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidrs[count.index]
+  vpc_id                  = aws_vpc.local-vpc.id
+  cidr_block              = var.public_subnet_nework_id[count.index]
   availability_zone       = local.azs[count.index]
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.name}-public-${local.azs[count.index]}"
+    Name = "local-${var.system_tag}-public-subnet-${local.azs[count.index]}"
     Tier = "public"
   }
 }
 
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = {
-    Name = "${var.name}-public"
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  count = var.az_count
-
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
-
 # --- private subnets: no public IPs, outbound only through the optional NAT gateway ---
-resource "aws_subnet" "private" {
-  count = var.az_count
+resource "aws_subnet" "private-subnet" {
+  count = var.total_availability_zone
 
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_subnet_cidrs[count.index]
+  vpc_id            = aws_vpc.local-vpc.id
+  cidr_block        = var.private_subnet_nework_id[count.index]
   availability_zone = local.azs[count.index]
 
   tags = {
-    Name = "${var.name}-private-${local.azs[count.index]}"
+    Name = "local-${var.system_tag}-private-subnet-${local.azs[count.index]}"
     Tier = "private"
   }
 }
 
-resource "aws_eip" "nat" {
+resource "aws_route_table" "public-subnet" {
+  vpc_id = aws_vpc.local-vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.local-internet-gateway.id
+  }
+
+  tags = {
+    Name = "local-${var.system_tag}-public-subnet"
+  }
+}
+
+resource "aws_route_table_association" "public-route-table" {
+  count = var.total_availability_zone
+
+  subnet_id      = aws_subnet.local-public-subnet[count.index].id
+  route_table_id = aws_route_table.public-subnet.id
+}
+
+resource "aws_eip" "public-nat" {
   count  = var.enable_nat_gateway ? 1 : 0
   domain = "vpc"
 
   tags = {
-    Name = "${var.name}-nat"
+    Name = "local-${var.system_tag}-public-nat"
   }
 
-  depends_on = [aws_internet_gateway.main]
+  depends_on = [aws_internet_gateway.local-internet-gateway]
 }
 
-resource "aws_nat_gateway" "main" {
+resource "aws_nat_gateway" "public-nat-gateway" {
   count = var.enable_nat_gateway ? 1 : 0
 
-  allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id
+  allocation_id = aws_eip.public-nat[0].id
+  subnet_id     = aws_subnet.local-public-subnet[0].id
 
   tags = {
-    Name = "${var.name}-nat"
+    Name = "local-${var.system_tag}-nat-gateway"
   }
 
-  depends_on = [aws_internet_gateway.main]
+  depends_on = [aws_internet_gateway.local-internet-gateway]
 }
 
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
+resource "aws_route_table" "private-route-table" {
+  vpc_id = aws_vpc.local-vpc.id
 
   dynamic "route" {
-    for_each = aws_nat_gateway.main
+    for_each = aws_nat_gateway.public-nat-gateway
     content {
       cidr_block     = "0.0.0.0/0"
       nat_gateway_id = route.value.id
@@ -208,14 +229,14 @@ resource "aws_route_table" "private" {
   }
 
   tags = {
-    Name = "${var.name}-private"
+    Name = "local-${var.system_tag}-private-route-table"
   }
 }
 
-resource "aws_route_table_association" "private" {
-  count = var.az_count
+resource "aws_route_table_association" "private-route-table-association" {
+  count = var.total_availability_zone
 
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private.id
+  subnet_id      = aws_subnet.private-subnet[count.index].id
+  route_table_id = aws_route_table.private-route-table.id
 }
 

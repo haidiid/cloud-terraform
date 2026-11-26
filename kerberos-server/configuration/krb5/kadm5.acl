@@ -1,0 +1,5 @@
+# installed as /var/kerberos/krb5kdc/kadm5.acl on the Kerberos KDC instance.
+#    - */admin principals (e.g. haidiid/admin) get full kadmin rights
+#    - haidiid gets read-only rights: inquire (i) and list (l) principals
+*/admin@HAIDI.ONLINE  *
+haidiid@HAIDI.ONLINE  il

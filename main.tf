@@ -87,6 +87,19 @@ resource "aws_security_group" "public-security-group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # defines the Kerberos KDC ports (see ./kerberos-server)
+  #    - ticket requests (AS/TGS) over UDP; over TCP they use port 80, already opened by the HTTP rule above
+  #      (AWS rejects a duplicate tcp/80 rule)
+  #    - kadmin over TCP
+  #    - kpasswd over UDP and TCP
+  ingress {
+    description = "Allow Kerberos ticket requests over UDP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     description = "Allow HTTPS outbound traffic"
     from_port   = 443
@@ -100,6 +113,76 @@ resource "aws_security_group" "public-security-group" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # defines the Kerberos KDC ports (see ./kerberos-server)
+  #    - ticket requests (AS/TGS) over UDP; over TCP they use port 80, already opened by the HTTP rule above
+  #      (AWS rejects a duplicate tcp/80 rule)
+  #    - kadmin over TCP
+  #    - kpasswd over UDP and TCP
+  ingress {
+    description = "Allow Kerberos ticket requests over UDP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow Kerberos kadmin over TCP"
+    from_port   = 9811
+    to_port     = 9811
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow Kerberos kpasswd over TCP"
+    from_port   = 9812
+    to_port     = 9812
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow Kerberos kpasswd over UDP"
+    from_port   = 9812
+    to_port     = 9812
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # lets Kerberos clients in this group (e.g. the ZooKeeper host) reach the KDC; tcp/80 egress is the HTTP rule above
+  egress {
+    description = "Allow Kerberos ticket requests outbound over UDP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow Kerberos kadmin outbound over TCP"
+    from_port   = 9811
+    to_port     = 9811
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow Kerberos kpasswd outbound over TCP"
+    from_port   = 9812
+    to_port     = 9812
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow Kerberos kpasswd outbound over UDP"
+    from_port   = 9812
+    to_port     = 9812
+    protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

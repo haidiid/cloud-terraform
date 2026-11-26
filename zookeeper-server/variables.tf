@@ -76,3 +76,8 @@ variable "zookeeper_uri" {
   description = "Zookeeper Application binary tarball on the instance"
   type        = string
 }
+
+variable "kerberos_ready_id" {
+  description = "Kerberos module's ready_id; the ZooKeeper instance is created only after the KDC is ready."
+  type        = string
+}

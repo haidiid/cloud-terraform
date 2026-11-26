@@ -32,6 +32,11 @@ data "local_file" "zookeeper_configuration_myid" {
   filename = "${path.module}/configuration/properties/myid"
 }
 
+# --- Kerberos: client krb5.conf, a copy of the KDC host's (realm, ticket, kadmin and kpasswd servers) ---
+data "local_file" "kerberos_configuration_krb5" {
+  filename = "${path.module}/configuration/krb5/krb5.conf"
+}
+
 # --- TLS: PKCS12 keystore/truststore are binary, so they are passed as base64 (content_base64) ---
 data "local_file" "zookeeper_tls_keystore" {
   filename = "${path.module}/credential/tls/zookeeper-server.p12"
@@ -81,14 +86,23 @@ data "aws_eip" "zookeeper" {
 #    - attaches to a public security group policy--connected to internet gateway (vpc_security_group_ids)
 #    - enables to public ip exposure
 #    - runs a terraform template-formatted bash provisioning shellscript (user_data)
+#    - is created only after the Kerberos KDC is ready (depends_on kerberos_dependency)
 # ---
+
+# carries the Kerberos module's ready_id into this module, so the instance can wait for the KDC (ordering only)
+resource "terraform_data" "kerberos_dependency" {
+  input = var.kerberos_ready_id
+}
+
 resource "aws_instance" "zookeeper" {
+  depends_on = [terraform_data.kerberos_dependency]
+
   ami                         = var.zookeeper_instance_ami_id != null ? var.zookeeper_instance_ami_id : data.aws_ami.zookeeper[0].id
   instance_type               = var.zookeeper_instance_type
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = var.security_group_ids
   associate_public_ip_address = true
-  user_data = templatefile("main.tfl", {
+  user_data = templatefile("${path.module}/main.tfl", {
     zookeeper_username                 = var.zookeeper_username
     zookeeper_uri                      = var.zookeeper_uri
     zookeeper_password                 = trimspace(data.local_file.zookeeper_user_password.content)
@@ -101,6 +115,7 @@ resource "aws_instance" "zookeeper" {
     zookeeper_configuration_systemd    = trimspace(data.local_file.zookeeper_configuration_systemd.content)
     zookeeper_tls_keystore_base64      = data.local_file.zookeeper_tls_keystore.content_base64
     zookeeper_tls_truststore_base64    = data.local_file.zookeeper_tls_truststore.content_base64
+    kerberos_configuration_krb5        = trimspace(data.local_file.kerberos_configuration_krb5.content)
   })
 
   root_block_device {

@@ -29,3 +29,6 @@ credential/*
 
 #--- User credential ---#
 *.pass
+
+#--- Kerberos keytabs ---#
+*.keytab

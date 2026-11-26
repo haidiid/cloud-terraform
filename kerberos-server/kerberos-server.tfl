@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# ---
+# First-boot provisioning for the Kerberos KDC instance, covering
+#    - the haidiid admin user with SSH access and sudo
+#    - the MIT Kerberos KDC (krb5kdc) and admin server (kadmind) for realm ${kerberos_realm}
+#    - ports: tickets on ${kerberos_kdc_port}, kadmin on ${kerberos_kadmin_port}, kpasswd on ${kerberos_kpasswd_port}
+# ---
+
+# SELinux permissive now (setenforce) and after every reboot (/etc/selinux/config)
+setenforce 0
+sed -i "s/^SELINUX=.*/SELINUX=permissive/" /etc/selinux/config
+
+echo "provisioning a kerberos user"
+
+groupadd -g 1001 ${kerberos_username}
+useradd ${kerberos_username} -u 1001 -g 1001 -m -c "a Kerberos User"
+echo "${kerberos_password}" | passwd --stdin ${kerberos_username}
+
+mkdir -p /home/${kerberos_username}/.ssh
+echo "${ssh_public_key}" > /home/${kerberos_username}/.ssh/authorized_keys
+
+chmod 700 /home/${kerberos_username}/.ssh
+chmod 600 /home/${kerberos_username}/.ssh/authorized_keys
+
+chown -R 1001:1001 /home/${kerberos_username}/.ssh
+
+echo "finished provisioning a kerberos user"
+
+echo "elevating a kerberos user to have root command accesses"
+
+cat << 'EOF' > /etc/sudoers.d/kerberos
+${kerberos_configuration_sudoers}
+EOF
+
+chown root:root /etc/sudoers.d/kerberos
+chmod 440 /etc/sudoers.d/kerberos
+
+visudo -c -f /etc/sudoers.d/kerberos || rm -f /etc/sudoers.d/kerberos
+
+echo "finished elevating a kerberos user to have root command accesses"
+
+echo "setting kerberos hostname to ${kerberos_hostname}"
+
+hostnamectl set-hostname ${kerberos_hostname}
+echo "$(hostname -I | awk '{print $1}') ${kerberos_hostname} $(echo ${kerberos_hostname} | cut -d. -f1)" >> /etc/hosts
+
+echo "finished setting kerberos hostname"
+
+echo "installing kerberos kdc"
+
+dnf install -y krb5-server krb5-workstation
+
+cat << 'EOF_KRB5' > /etc/krb5.conf
+${kerberos_configuration_krb5}
+EOF_KRB5
+
+cat << 'EOF_KDC' > /var/kerberos/krb5kdc/kdc.conf
+${kerberos_configuration_kdc}
+EOF_KDC
+
+cat << 'EOF_ACL' > /var/kerberos/krb5kdc/kadm5.acl
+${kerberos_configuration_acl}
+EOF_ACL
+
+chown root:root /etc/krb5.conf /var/kerberos/krb5kdc/kdc.conf /var/kerberos/krb5kdc/kadm5.acl
+chmod 644 /etc/krb5.conf
+chmod 600 /var/kerberos/krb5kdc/kdc.conf /var/kerberos/krb5kdc/kadm5.acl
+
+echo "creating kerberos database for realm ${kerberos_realm}"
+
+kdb5_util create -s -r ${kerberos_realm} -P '${kerberos_master_password}'
+
+echo "creating kerberos admin, users, and principals for "
+
+# client principal, authenticated by password; read-only kadmin rights (il) via kadm5.acl
+kadmin.local -q "addprinc +requires_preauth -pw ${kerberos_client_password} ${kerberos_client_principal}@${kerberos_realm}"
+
+# admin principal, authenticated by password; full kadmin rights via */admin in kadm5.acl
+kadmin.local -q "addprinc +requires_preauth -pw ${kerberos_admin_password} ${kerberos_admin_principal}@${kerberos_realm}"
+
+# ZooKeeper service principal (service/host), authenticated by password; no kadmin rights
+kadmin.local -q "addprinc +requires_preauth -pw ${kerberos_zookeeper_password} ${kerberos_zookeeper_principal}@${kerberos_realm}"
+
+echo "finished creating kerberos principals"
+
+echo "generating zookeeper keytab realm ${kerberos_realm}"
+
+# exports the ZooKeeper principal's password-derived keys (-norandkey keeps kvno 1 and the password valid),
+# so the keytab is the same on every rebuild; owned by the kerberos user to be fetched over ssh without sudo
+rm -f /home/${kerberos_username}/zookeeper.keytab
+
+kadmin.local -q "ktadd -norandkey -k /home/${kerberos_username}/zookeeper.keytab ${kerberos_zookeeper_principal}@${kerberos_realm}"
+
+chown ${kerberos_username}:${kerberos_username} /home/${kerberos_username}/zookeeper.keytab
+chmod 600 /home/${kerberos_username}/zookeeper.keytab
+
+echo "finished generating zookeeper keytab"
+
+systemctl enable --now krb5kdc
+systemctl enable --now kadmin
+
+echo "finished installing kerberos kdc"

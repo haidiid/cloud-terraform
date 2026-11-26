@@ -28,6 +28,21 @@ visudo -c -f /etc/sudoers.d/zookeeper
 
 echo "finished elevating a zookeeper user to have root command accesses"
 
+echo "installing kerberos client"
+
+# kinit, klist, kdestroy, kvno, kpasswd, kadmin and ktutil; krb5.conf is a copy of the KDC host's, so the realm,
+# ticket/kadmin/kpasswd servers and SPAKE-only pre-authentication match the KDC
+dnf install -y krb5-workstation
+
+cat << 'EOF_KRB5' > /etc/krb5.conf
+${kerberos_configuration_krb5}
+EOF_KRB5
+
+chown root:root /etc/krb5.conf
+chmod 644 /etc/krb5.conf
+
+echo "finished installing kerberos client"
+
 echo "installing java"
 
 sudo dnf install java-25-openjdk-headless -y

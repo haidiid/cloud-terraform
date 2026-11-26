@@ -21,6 +21,11 @@ module "zookeeper_server" {
   zookeeper_instance_volume_size = var.zookeeper_instance_volume_size
   zookeeper_username             = var.zookeeper_username
   zookeeper_uri                  = var.zookeeper_uri
+
+  # the instance is created only after the Kerberos KDC has finished its first boot and handed over the
+  # ZooKeeper keytab. not a module-wide depends_on: that would defer the module's data sources to apply time
+  # whenever the KDC changes, and the unknown AMI would force the ZooKeeper instance to be replaced.
+  kerberos_ready_id = module.kerberos_server.ready_id
 }
 
 # keep the existing instance in state instead of destroying and recreating it ---

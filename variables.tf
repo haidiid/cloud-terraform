@@ -26,6 +26,11 @@ variable "public_ip" {
   type        = string
 }
 
+variable "second_public_ip" {
+  description = "Public IPv4 of the pre-allocated Elastic IP to associate with the Kerberos KDC instance."
+  type        = string
+}
+
 variable "aws_region" {
   description = "AWS region for every resource. Overridden by aws_region in terraform.tfvars."
   type        = string
@@ -116,4 +121,81 @@ variable "zookeeper_uri" {
   description = "ZooKeeper application binary tarball URI."
   type        = string
   default     = "https://dlcdn.apache.org/zookeeper/zookeeper-3.8.8/apache-zookeeper-3.8.8-bin.tar.gz"
+}
+
+# ---
+# Defines Kerberos KDC instance variables, covering
+#    - instance's name tag
+#    - instance's version tag
+#    - image type (t3.micro: 1 GiB RAM) and root volume size (15 GiB)
+#    - provision script instance's user
+# ---
+variable "kerberos_name_tag" {
+  description = "Service component of the Kerberos instance Name tag."
+  type        = string
+}
+
+variable "kerberos_version_tag" {
+  description = "Kerberos (MIT krb5) version recorded on the instance Version tag."
+  type        = string
+}
+
+variable "kerberos_instance_type" {
+  description = "EC2 instance type of the Kerberos instance (t3.micro provides 1 GiB RAM)."
+  type        = string
+}
+
+variable "kerberos_instance_ami_id" {
+  description = "Optional AMI ID for the Kerberos instance. When null, the latest matching AlmaLinux 10 AMI is selected."
+  type        = string
+}
+
+variable "kerberos_instance_volume_size" {
+  description = "Root volume size in GiB for the Kerberos instance."
+  type        = number
+}
+
+variable "kerberos_username" {
+  description = "Username for the admin user created on the Kerberos instance."
+  type        = string
+}
+
+variable "kerberos_realm" {
+  description = "Kerberos realm served by the KDC."
+  type        = string
+}
+
+variable "kerberos_hostname" {
+  description = "Fully qualified hostname of the KDC."
+  type        = string
+}
+
+variable "kerberos_kdc_port" {
+  description = "UDP and TCP port the KDC accepts ticket requests on."
+  type        = number
+}
+
+variable "kerberos_kadmin_port" {
+  description = "TCP port of the kadmin service."
+  type        = number
+}
+
+variable "kerberos_kpasswd_port" {
+  description = "UDP and TCP port of the kpasswd service."
+  type        = number
+}
+
+variable "kerberos_client_principal" {
+  description = "Client principal name without realm."
+  type        = string
+}
+
+variable "kerberos_admin_principal" {
+  description = "Admin principal name without realm; matches */admin in kadm5.acl."
+  type        = string
+}
+
+variable "kerberos_zookeeper_principal" {
+  description = "ZooKeeper service principal name without realm (service/host)."
+  type        = string
 }

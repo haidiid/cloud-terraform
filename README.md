@@ -19,12 +19,12 @@ terraform init
 
 ### 2. Review Execution Plan
 ```bash
-terraform plan -var-file=local.tfvars
+terraform plan -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars
 ```
 
 ### 3. Apply Configuration
 ```bash
-terraform apply -var-file=local.tfvars
+terraform apply -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars
 ```
 
 ## Managing the ZooKeeper EC2 Instance
@@ -43,7 +43,7 @@ Remove the instance and its root volume while keeping the VPC, subnets, route ta
 security groups:
 
 ```bash
-terraform destroy -target=module.zookeeper_server.aws_instance.main -var-file=local.tfvars
+terraform destroy -target=module.zookeeper_server.aws_instance.main -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars
 ```
 
 - Check that the plan shows `1 to destroy` and only lists `module.zookeeper_server.aws_instance.main`, then type `yes`.
@@ -78,12 +78,12 @@ the instance installs at boot:
 2. Replace the instance in one step (destroy, then create):
 
    ```bash
-   terraform apply -replace=module.zookeeper_server.aws_instance.main -var-file=local.tfvars
+   terraform apply -replace=module.zookeeper_server.aws_instance.main -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars
    ```
 
    The plan should show `1 to add, 0 to change, 1 to destroy`. If the instance was already removed
    with `terraform destroy -target=module.zookeeper_server.aws_instance.main`, a plain
-   `terraform apply -var-file=local.tfvars` creates it again.
+   `terraform apply -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars` creates it again.
 
 3. The new instance gets a **new public IP**. Read it from the outputs:
 
@@ -234,7 +234,7 @@ quit
 The Kafka broker is the `aws_instance.main` resource in `kafka-broker/kafka-broker.tf` (module `kafka_broker`),
 tagged `Name = kafka-0-vm` and `Version = 0.0.1`. Like the ZooKeeper server it is provisioned once, on first
 boot, by the `kafka-broker/kafka-broker.tfl` user-data script, so rebuild it with
-`terraform apply -replace=module.kafka_broker.aws_instance.main -var-file=local.tfvars` after changing anything
+`terraform apply -replace=module.kafka_broker.aws_instance.main -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars` after changing anything
 it installs.
 
 - **Kafka 3.9.2** on Java 21. Kafka 4 no longer supports ZooKeeper, so `kafka_uri` must stay on a 3.x release.
@@ -277,7 +277,7 @@ cp zookeeper-server/credential/tls/truststore.p12 kafka-broker/credential/tls/tr
 ### 2. Apply and point the advertised host at the broker
 
 ```bash
-terraform apply -var-file=local.tfvars
+terraform apply -var-file=local.tfvars -var-file=zookeeper-server/local.tfvars -var-file=kerberos-server/local.tfvars
 ```
 
 ```bash
